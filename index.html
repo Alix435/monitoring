@@ -29,7 +29,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
-            max-width: 1200px;
+            max-width: 1800px;
             margin: 0 auto;
         }
         .printer-card {
@@ -442,7 +442,7 @@
                                     ✏️ Редакт.
                                 </button>
                                 <button
-                                    onclick="deletePrinter(${p.id}, '${escape(p.name)}')"
+                                    onclick="deletePrinter(${Number(p.id)}, '${escape(p.name)}')"
                                     title="Удалить"
                                     style="
                                         flex: 1;
