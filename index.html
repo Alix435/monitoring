@@ -350,85 +350,135 @@
             });
     }
 
-    // === Перезагрузка списка (вместо перезагрузки страницы) ===
-    function loadPrinters() {
-        fetch('/api/printers')
-            .then(res => res.json())
-            .then(printers => {
-                const grid = document.getElementById('printers-grid');
-                grid.innerHTML = printers.map(p => `
-                    <div class="printer-card" id="printer-${p.id}">
-                        <div class="name">${escape(p.name)}</div>
-                        <div class="ip">
-                            <a href="http://${escape(p.ip)}" target="_blank" rel="noopener noreferrer"
-                               style="color: #0ea5e9; text-decoration: none;"
-                               title="Открыть веб-интерфейс принтера">
-                                ${escape(p.ip)} 🌐
-                            </a>
-                        </div>
-                        <div class="model">🖨️ ${escape(p.model)}</div>
-                        <div class="location">📍 ${escape(p.location)}</div>
+        function loadPrinters() {
+            fetch('/api/printers')
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(printers => {
+                    const grid = document.getElementById('printers-grid');
 
-                        <div class="status-line">
-                            <span class="status-badge status-${p.status ? 'online' : 'offline'}" id="status-${p.id}">
-                                ${p.status ? '✅ Онлайн' : '❌ Офлайн'}
-                            </span>
-                            <span class="response-time" id="rt-${p.id}">
-                                ${p.response_time} мс
-                            </span>
-                        </div>
-                        <div class="last-check" id="check-${p.id}">
-                            Проверка: ${p.last_check || '—'}
-                        </div>
+                    // ✅ Проверка: если список пуст — показываем "пустое состояние"
+                    if (!printers || printers.length === 0) {
+                        grid.innerHTML = `
+                            <div class="empty-state" style="
+                                grid-column: 1 / -1;
+                                text-align: center;
+                                padding: 40px 20px;
+                                background: #f8fafc;
+                                border-radius: 12px;
+                                border: 1px dashed #cbd5e1;
+                            ">
+                                <div style="font-size: 3.5em; margin-bottom: 16px;">📭</div>
+                                <h2 style="color: #475569; margin: 0 0 12px;">Нет принтеров</h2>
+                                <p style="color: #64748b; max-width: 500px; margin: 0 auto 24px;">
+                                    Добавьте первый принтер, чтобы начать мониторинг доступности в сети.
+                                </p>
+                                <button onclick="showAddForm()"
+                                        style="
+                                            background: #3b82f6;
+                                            color: white;
+                                            border: none;
+                                            padding: 10px 28px;
+                                            border-radius: 8px;
+                                            font-size: 1.1em;
+                                            font-weight: 500;
+                                            cursor: pointer;
+                                            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+                                        ">
+                                    ➕ Добавить принтер
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
 
-                        <!-- Кнопки управления -->
-                        <div style="margin-top: 12px; display: flex; gap: 6px;">
-                            <button
-                                onclick="showEditForm(${JSON.stringify(p).replace(/"/g, '&quot;')})"
-                                title="Редактировать"
-                                style="
-                                    flex: 1;
-                                    background: #fef9c3;
-                                    color: #854d0e;
-                                    border: 1px solid #fde68a;
-                                    padding: 6px 0;
-                                    border-radius: 6px;
-                                    font-size: 0.85em;
-                                    cursor: pointer;
-                                    transition: background 0.2s;
-                                "
-                                onmouseover="this.style.background='#fdf5b7'"
-                                onmouseout="this.style.background='#fef9c3'"
-                            >
-                                ✏️ Редакт.
-                            </button>
-                            <button
-                                onclick="deletePrinter(${p.id}, '${escape(p.name)}')"
-                                title="Удалить"
-                                style="
-                                    flex: 1;
-                                    background: #fee2e2;
-                                    color: #b91c1c;
-                                    border: 1px solid #fecaca;
-                                    padding: 6px 0;
-                                    border-radius: 6px;
-                                    font-size: 0.85em;
-                                    cursor: pointer;
-                                    transition: background 0.2s;
-                                "
-                                onmouseover="this.style.background='#fbd5d5'"
-                                onmouseout="this.style.background='#fee2e2'"
-                            >
-                                🗑️ Удалить
-                            </button>
+                    // Иначе — рендерим карточки (твой текущий код)
+                    grid.innerHTML = printers.map(p => `
+                        <div class="printer-card" id="printer-${p.id}">
+                            <div class="name">${escape(p.name)}</div>
+                            <div class="ip">
+                                <a href="http://${escape(p.ip)}" target="_blank" rel="noopener noreferrer"
+                                   style="color: #0ea5e9; text-decoration: none;"
+                                   title="Открыть веб-интерфейс принтера">
+                                    ${escape(p.ip)} 🌐
+                                </a>
+                            </div>
+                            <div class="model">🖨️ ${escape(p.model)}</div>
+                            <div class="location">📍 ${escape(p.location)}</div>
+
+                            <div class="status-line">
+                                <span class="status-badge status-${p.status ? 'online' : 'offline'}" id="status-${p.id}">
+                                    ${p.status ? '✅ Онлайн' : '❌ Офлайн'}
+                                </span>
+                                <span class="response-time" id="rt-${p.id}">
+                                    ${p.response_time} мс
+                                </span>
+                            </div>
+                            <div class="last-check" id="check-${p.id}">
+                                Проверка: ${p.last_check || '—'}
+                            </div>
+
+                            <!-- Кнопки управления -->
+                            <div style="margin-top: 12px; display: flex; gap: 6px;">
+                                <button
+                                    onclick="showEditForm(${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                                    title="Редактировать"
+                                    style="
+                                        flex: 1;
+                                        background: #fef9c3;
+                                        color: #854d0e;
+                                        border: 1px solid #fde68a;
+                                        padding: 6px 0;
+                                        border-radius: 6px;
+                                        font-size: 0.85em;
+                                        cursor: pointer;
+                                        transition: background 0.2s;
+                                    "
+                                    onmouseover="this.style.background='#fdf5b7'"
+                                    onmouseout="this.style.background='#fef9c3'"
+                                >
+                                    ✏️ Редакт.
+                                </button>
+                                <button
+                                    onclick="deletePrinter(${p.id}, '${escape(p.name)}')"
+                                    title="Удалить"
+                                    style="
+                                        flex: 1;
+                                        background: #fee2e2;
+                                        color: #b91c1c;
+                                        border: 1px solid #fecaca;
+                                        padding: 6px 0;
+                                        border-radius: 6px;
+                                        font-size: 0.85em;
+                                        cursor: pointer;
+                                        transition: background 0.2s;
+                                    "
+                                    onmouseover="this.style.background='#fbd5d5'"
+                                    onmouseout="this.style.background='#fee2e2'"
+                                >
+                                    🗑️ Удалить
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
-            })
-            .catch(err => {
-                console.error('Ошибка загрузки принтеров:', err);
-            });
-    }
+                    `).join('');
+                })
+                .catch(err => {
+                    console.error('Ошибка загрузки принтеров:', err);
+                    document.getElementById('printers-grid').innerHTML = `
+                        <div class="error-state" style="
+                            grid-column: 1 / -1;
+                            text-align: center;
+                            padding: 40px;
+                            color: #ef4444;
+                        ">
+                            ❌ Не удалось загрузить список принтеров.<br>
+                            Проверьте консоль разработчика (F12).
+                        </div>
+                    `;
+                });
+        }
 
     // Вспомогательная функция экранирования
     function escape(s) {
