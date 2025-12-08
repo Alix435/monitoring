@@ -12,6 +12,8 @@ import database
 
 app = Flask(__name__)
 
+database.create_db()
+
 class IPMonitor:
     def __init__(self):
         self.ip_addresses = []
@@ -54,19 +56,24 @@ class IPMonitor:
 
     def append_ip(self):
         printers = database.read_db()
-        for printer in printers:
-            # Предполагаем: (id, name, ip, model, location)
-            tmp = {
-                'id': printer[0],
-                'name': printer[1],
-                'ip': printer[2],
-                'model': printer[3],
-                'location': printer[4],
-                'status': False,
-                'response_time': 0,
-                'last_check': ""
-            }
-            self.ip_addresses.append(tmp)
+        if not printers:
+            print("ℹ️ БД пустая. Добавьте принтеры через интерфейс.")
+            self.ip_addresses = []
+            return
+        else:
+            for printer in printers:
+                # Предполагаем: (id, name, ip, model, location)
+                tmp = {
+                    'id': printer[0],
+                    'name': printer[1],
+                    'ip': printer[2],
+                    'model': printer[3],
+                    'location': printer[4],
+                    'status': False,
+                    'response_time': 0,
+                    'last_check': ""
+                }
+                self.ip_addresses.append(tmp)
 
     def check_all_ips(self):
         with self.lock:
@@ -129,6 +136,7 @@ def after_request(response):
 def api_printers():
     return jsonify(monitor.get_status())
 
+# данную часть нужно корректировать и перенести её в database
 # POST /api/printers — добавить принтер
 @app.route('/api/printers', methods=['POST'])
 def add_printer():
