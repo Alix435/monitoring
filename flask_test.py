@@ -1,9 +1,3 @@
-import sqlite3
-
-
-# DB = 'printers.db'
-DB = 'test_db.db'
-
 def create_db():
     con = sqlite3.connect(DB)
     cur = con.cursor()
