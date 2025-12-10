@@ -38,6 +38,7 @@
             padding: 16px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             transition: transform 0.2s;
+
         }
         .printer-card:hover {
             transform: translateY(-2px);
@@ -237,6 +238,12 @@
             <label style="display: block; margin: 12px 0 6px;">Модель:</label>
             <input type="text" id="model" required placeholder="HP LaserJet Pro MFP M428fd"
                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <label style="display: block; margin: 12px 0 6px;">Тип:</label>
+            <select id="color" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="1">Цветной</option>
+                <option value="0">Черно-белый</option>
+            </select>
 
             <label style="display: block; margin: 12px 0 6px;">Расположение:</label>
             <input type="text" id="location" required placeholder="Офис, каб. 205"
@@ -255,20 +262,22 @@
 <script>
     // === Модальное окно ===
     function showModal(title, printer = null) {
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('printer-form').reset();
-        document.getElementById('printer-id').value = '';
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('printer-form').reset();
+    document.getElementById('printer-id').value = '';
 
-        if (printer) {
-            document.getElementById('printer-id').value = printer.id;
-            document.getElementById('name').value = printer.name;
-            document.getElementById('ip').value = printer.ip;
-            document.getElementById('model').value = printer.model;
-            document.getElementById('location').value = printer.location;
-        }
-
-        document.getElementById('modal').style.display = 'flex';
+    if (printer) {
+        document.getElementById('printer-id').value = printer.id;
+        document.getElementById('name').value = printer.name;
+        document.getElementById('ip').value = printer.ip;
+        document.getElementById('model').value = printer.model;
+        document.getElementById('location').value = printer.location;
+        // Устанавливаем тип принтера
+        document.getElementById('color').value = printer.color ? '1' : '0';
     }
+
+    document.getElementById('modal').style.display = 'flex';
+}
 
     function closeModal() {
         document.getElementById('modal').style.display = 'none';
@@ -291,7 +300,8 @@
             name: document.getElementById('name').value.trim(),
             ip: document.getElementById('ip').value.trim(),
             model: document.getElementById('model').value.trim(),
-            location: document.getElementById('location').value.trim()
+            location: document.getElementById('location').value.trim(),
+            color: document.getElementById('color').value === '1'
         };
 
         // Валидация IP (простая)
