@@ -1,97 +1,14 @@
 from flask import Flask, render_template, jsonify, request
 from datetime import datetime
-
-import subprocess
-import platform
-import re
-import concurrent.futures
 import time
 import threading
 
-import database
+from core.database import Database
+from core.monitor import IPMonitor
 
 app = Flask(__name__)
 
-database.create_db()
-
-class IPMonitor:
-    def __init__(self):
-        self.ip_addresses = []
-        self.lock = threading.Lock()
-        self.append_ip()
-
-    def ping_ip(self, ip_info):
-        try:
-            ip = ip_info['ip']
-            if platform.system().lower() == "windows":
-                command = ["ping", "-n", "2", "-w", "2000", ip]
-            else:
-                command = ["ping", "-c", "2", "-W", "2", ip]
-
-            result = subprocess.run(command, capture_output=True, text=True, timeout=5)
-
-            now = datetime.now().strftime("%H:%M:%S")
-            if result.returncode == 0:
-                time_match = re.search(r'time=([\d.]+)\s*ms', result.stdout)
-                if not time_match and platform.system().lower() == "windows":
-                    time_match = re.search(r'Average = (\d+)ms', result.stdout)
-
-                response_time = float(time_match.group(1)) if time_match else 0
-
-                ip_info['status'] = True
-                ip_info['response_time'] = round(response_time, 2)
-                ip_info['last_check'] = now
-            else:
-                ip_info['status'] = False
-                ip_info['response_time'] = 0
-                ip_info['last_check'] = now
-
-        except Exception as e:
-            ip_info['status'] = False
-            ip_info['response_time'] = 0
-            ip_info['last_check'] = datetime.now().strftime("%H:%M:%S")
-            # ip_info['error'] = str(e)  # опционально
-
-        return ip_info
-
-    def append_ip(self):
-        printers = database.read_db()
-        if not printers:
-            print("ℹ️ БД пустая. Добавьте принтеры через интерфейс.")
-            self.ip_addresses = []
-            return
-        else:
-            for printer in printers:
-                # Предполагаем: (id, name, ip, model, location)
-                tmp = {
-                    'id': printer[0],
-                    'name': printer[1],
-                    'ip': printer[2],
-                    'model': printer[3],
-                    'location': printer[4],
-                    'status': False,
-                    'response_time': 0,
-                    'last_check': ""
-                }
-                self.ip_addresses.append(tmp)
-
-    def check_all_ips(self):
-        with self.lock:
-            targets = self.ip_addresses.copy()
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            results = list(executor.map(self.ping_ip, targets))
-
-        with self.lock:
-            self.ip_addresses = results
-
-        return results
-
-    def get_status(self):
-        with self.lock:
-            return self.ip_addresses.copy()
-
-
+db = Database()
 monitor = IPMonitor()
 
 
@@ -124,6 +41,7 @@ def api_status():
         for p in printers
     ])
 
+
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -131,28 +49,82 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
-# GET /api/printers — получение списка (альтернатива monitor.get_status())
+
 @app.route('/api/printers')
 def api_printers():
     return jsonify(monitor.get_status())
 
-# данную часть нужно корректировать и перенести её в database
-# POST /api/printers — добавить принтер
+
+# @app.route('/api/printers', methods=['POST'])
+# def add_printer():
+#     try:
+#         data_print = request.get_json()
+#         data_cart = data_print
+#
+#         required_print = ['name', 'ip', 'model', 'location']
+#         required_cart  = ['model', 'color']
+#         for field in required_print:
+#             if not data_print.get(field):
+#                 return jsonify({'error': f'Поле "{field}" обязательно'}), 400
+#
+#         new_id = db.add_printer(data_print)
+#
+#         new_printer = {
+#             'id': new_id,
+#             'name': data_print['name'],
+#             'ip': data_print['ip'],
+#             'model': data_print['model'],
+#             'location': data_print['location'],
+#             'status': False,
+#             'response_time': 0,
+#             'last_check': ""
+#         }
+#
+#         for field in required_cart:
+#             if not data_cart.get(field):
+#                 return jsonify({'error': f'Поле "{field}" обязательно'}), 400
+#
+#         test = db.add_cartridge(data_cart)
+#
+#         with monitor.lock:
+#             monitor.ip_addresses.append(new_printer)
+#
+#         threading.Thread(
+#             target=lambda: monitor.ping_ip(new_printer),
+#             daemon=True
+#         ).start()
+#
+#         return jsonify({'id': new_id, **new_printer}), 201
+#
+#     except Exception as e:
+#         print("Ошибка добавления:", e)
+#         return jsonify({'error': 'Ошибка сервера'}), 500
+
 @app.route('/api/printers', methods=['POST'])
 def add_printer():
     try:
         data = request.get_json()
-        # Валидация
-        required = ['name', 'ip', 'model', 'location']
-        for field in required:
+
+        required_print = ['name', 'ip', 'model', 'location']
+        for field in required_print:
             if not data.get(field):
                 return jsonify({'error': f'Поле "{field}" обязательно'}), 400
 
-        new_id = database.add_printer(data)
 
-        # Добавляем в мониторинг
+        printer_id= db.add_printer_with_cartridges(
+            printer_data={
+                'name': data['name'],
+                'ip': data['ip'],
+                'model': data['model'],
+                'location': data['location']
+            },
+            cartridges_data={
+                'color': data['color'],
+                'model': data['model']
+            }
+        )
         new_printer = {
-            'id': new_id,
+            'id': printer_id,
             'name': data['name'],
             'ip': data['ip'],
             'model': data['model'],
@@ -161,23 +133,24 @@ def add_printer():
             'response_time': 0,
             'last_check': ""
         }
+
+
+
         with monitor.lock:
             monitor.ip_addresses.append(new_printer)
 
-        # Добавь:
-        # → Запустим пинг нового принтера в отдельном потоке (не блокируя ответ)
         threading.Thread(
             target=lambda: monitor.ping_ip(new_printer),
             daemon=True
         ).start()
 
-        return jsonify({'id': new_id, **new_printer}), 201
+        return jsonify({'id': printer_id, **new_printer}), 201
 
     except Exception as e:
         print("Ошибка добавления:", e)
         return jsonify({'error': 'Ошибка сервера'}), 500
 
-# PUT /api/printers/<int:printer_id> — обновить
+
 @app.route('/api/printers/<int:printer_id>', methods=['PUT'])
 def update_printer(printer_id):
     try:
@@ -187,11 +160,9 @@ def update_printer(printer_id):
             if not data.get(field):
                 return jsonify({'error': f'Поле "{field}" обязательно'}), 400
 
-        if not database.update_database(data, printer_id):
+        if not db.update_printer(printer_id, data):
             return jsonify({'error': 'Принтер не найден'}), 404
 
-
-        # Обновляем в памяти
         with monitor.lock:
             for p in monitor.ip_addresses:
                 if p['id'] == printer_id:
@@ -210,12 +181,11 @@ def update_printer(printer_id):
         return jsonify({'error': 'Ошибка сервера'}), 500
 
 
-# DELETE /api/printers/<int:printer_id> — удалить
 @app.route('/api/printers/<int:printer_id>', methods=['DELETE'])
 def delete_printer(printer_id):
     try:
 
-        if not database.delete_printer(printer_id):
+        if not db.delete_printer(printer_id):
             return jsonify({'error': f'Принтер ID={printer_id} не найден в БД'}), 404
 
         removed = False
@@ -240,9 +210,8 @@ def delete_printer(printer_id):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
-    # Первый запуск
     monitor.check_all_ips()
-    # Фоновый поток
+
     thread = threading.Thread(target=background_monitor, daemon=True)
     thread.start()
 
