@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Ошибка</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #333;
+        position: relative; /* чтобы позиционировать меню абсолютно */
+    }
+
+    /* Меню в правом верхнем углу */
+    .top-nav {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .top-nav a {
+        color: #546E7A;
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        font-size: 0.95em;
+    }
+    .top-nav a:hover {
+        background-color: #f0f0f0;
+        color: #212121;
+    }
+    .top-nav a:active {
+        background-color: #e0e0e0;
+    }
+
+    /* Основной контент остаётся по центру */
+    .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* теперь вертикальное центрирование работает */
+        align-items: center;
+        text-align: center;
+        padding: 0 20px;
+    }
+
+    img {
+        display: block;
+        max-width: 80%;
+        max-height: 60vh;
+        height: auto;
+        margin-bottom: 24px;
+    }
+
+    .caption {
+        font-size: 1.6em;
+        line-height: 1.4;
+    }
+
+    .subtext {
+        font-size: 1.0em;
+        color: #777;
+        margin-top: 12px;
+        max-width: 80%;
+        line-height: 1.5;
+    }
+</style>
+</head>
+<body>
+    <div class="top-nav">
+        <a href="/" title="Главное меню">🖨️ Меню</a>
+        <span> • </span>
+        <a href="/printers" title="Учёт картриджей">🖥️ Мониторинг</a>
+        <span> • </span>
+        <a href="/cartridges" title="Учёт картриджей">📦 Картриджи</a>
+    </div>
+    <img src="{{ url_for('static', filename='img/error.png') }}" alt="Ошибка">
+    <div class="caption">{{ message }}</div>
+
+    <div class="subtext">
+    {{ submessage }}
+    </div>
+</body>
+</html>
